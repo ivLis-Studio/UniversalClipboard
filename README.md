@@ -1,5 +1,7 @@
 !! 아직 개발중입니다. !!
 
+![image](https://github.com/user-attachments/assets/44cb8c8b-2803-4d19-b3e3-6f904204bedb)
+
 # UniPaste - Clipboard History Manager
 
 UniPaste는 사용자의 클립보드 사용 내역을 효율적으로 관리하고, 원하는 항목을 쉽게 다시 사용할 수 있도록 도와주는 클립보드 히스토리 매니저 애플리케이션입니다. Windows 와 Mac 기기 간의 클립보드 동기화를 지원합니다.
