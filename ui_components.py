@@ -635,10 +635,14 @@ class ClipboardHistoryPopup(QWidget):
         self.items_list.clear()
         
         if not self.filtered_items:
+            print("표시할 항목 없음")
             self.empty_message.setVisible(True)
+            self.items_list.setVisible(False)
             return
         
+        print(f"UI에 {len(self.filtered_items)}개 항목 표시")
         self.empty_message.setVisible(False)
+        self.items_list.setVisible(True)
         
         for i, item_text in enumerate(self.filtered_items):
             # 아이템 위젯 생성
@@ -805,8 +809,16 @@ class ClipboardHistoryPopup(QWidget):
                 self.animation.start()
                 return
 
+            # 클립보드 히스토리 새로고침
             self.change_category(0) 
             self.search_box.clear()
+            
+            # 현재 화면에서 사용 가능한 클립보드 항목 업데이트
+            from clipboard_monitor import ClipboardMonitorThread
+            current_history = ClipboardMonitorThread.get_history()
+            print(f"팝업 표시 전 클립보드 히스토리 {len(current_history)}개 항목 로드")
+            self.current_history_items = current_history
+            self.filter_history("")
             
             target_screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
             screen_geometry = target_screen.availableGeometry()
@@ -887,6 +899,7 @@ class ClipboardHistoryPopup(QWidget):
     
     def update_history(self, history_items):
         """클립보드 히스토리 업데이트"""
+        print(f"히스토리 업데이트: {len(history_items)}개 항목")
         self.current_history_items = list(history_items)
         self.filter_history(self.search_box.text())
 
