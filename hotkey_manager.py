@@ -191,13 +191,38 @@ class HotkeyListenerThread(QThread):
                 print(f"HotkeyListenerThread: 키 해제 중 오류: {e}")
                 
         try:
-            # 모든 키보드 이벤트를 시스템으로 전달하도록 설정
-            self.listener_instance = keyboard.Listener(
-                on_press=on_press, 
-                on_release=on_release, 
-                suppress=False
-            )
-            self.listener_instance.start()
+            # Mac 환경에서는 접근성 권한 문제 처리
+            if sys.platform == "darwin":
+                print("HotkeyListenerThread: Mac 환경에서 키보드 리스너 생성 시도...")
+                try:
+                    # 모든 키보드 이벤트를 시스템으로 전달하도록 설정
+                    self.listener_instance = keyboard.Listener(
+                        on_press=on_press, 
+                        on_release=on_release, 
+                        suppress=False
+                    )
+                    self.listener_instance.start()
+                    
+                    # 리스너가 실제로 시작되었는지 확인
+                    time.sleep(0.2)
+                    if not self.listener_instance.is_alive():
+                        print("HotkeyListenerThread: 키보드 리스너가 시작되지 않았습니다. 접근성 권한을 확인하세요.")
+                        return
+                    
+                    print("HotkeyListenerThread: Mac에서 키보드 리스너 시작 성공!")
+                except Exception as mac_error:
+                    print(f"HotkeyListenerThread: Mac 환경 키보드 리스너 오류: {mac_error}")
+                    if "accessibility" in str(mac_error).lower() or "is not trusted" in str(mac_error).lower():
+                        print("HotkeyListenerThread: 접근성 권한이 필요합니다. 시스템 환경설정 > 개인 정보 보호 및 보안 > 개인 정보 보호 > 손쉬운 사용에서 이 앱을 활성화하세요.")
+                    return
+            else:
+                # 다른 플랫폼에서의 처리
+                self.listener_instance = keyboard.Listener(
+                    on_press=on_press, 
+                    on_release=on_release, 
+                    suppress=False
+                )
+                self.listener_instance.start()
             
             # 스레드 종료 플래그
             self._should_run = True
@@ -212,7 +237,10 @@ class HotkeyListenerThread(QThread):
             print(f"HotkeyListenerThread: 리스너 오류: {e}")
         finally:
             if self.listener_instance and self.listener_instance.is_alive(): 
-                self.listener_instance.stop()
+                try:
+                    self.listener_instance.stop()
+                except Exception as e:
+                    print(f"HotkeyListenerThread: 리스너 종료 중 오류: {e}")
             print("HotkeyListenerThread: 리스너가 중지되었습니다. run 메서드가 종료됩니다.")
 
     def stop(self):

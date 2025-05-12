@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QScrollArea, QFrame, QLineEdit, QApplication, QDialog,
     QSizePolicy, QGraphicsOpacityEffect, QToolButton, QGridLayout,
-    QListWidget, QListWidgetItem, QCheckBox, QComboBox
+    QListWidget, QListWidgetItem, QCheckBox, QComboBox, QMessageBox
 )
 from PyQt6.QtGui import (
     QCursor, QPixmap, QPainter, QColor, QFont, QPalette, 
@@ -1379,6 +1379,18 @@ class SettingsDialog(QDialog):
         self.record_button.setEnabled(False)
         self.save_button.setEnabled(False)
         self.temp_hotkey_config = None
+        
+        # Mac 환경에서 접근성 권한 안내
+        if sys.platform == "darwin":
+            if not hasattr(self, '_mac_warning_shown'):
+                self._mac_warning_shown = True
+                msg_box = QMessageBox(self)
+                msg_box.setWindowTitle("접근성 권한 필요")
+                msg_box.setText("키보드 입력을 감지하려면 macOS 접근성 권한이 필요합니다.")
+                msg_box.setInformativeText("권한이 없으면 단축키 등록이 작동하지 않을 수 있습니다.\n\n설정 방법:\n1. 시스템 환경설정 > 개인 정보 보호 및 보안 > 손쉬운 사용\n2. 목록에서 이 앱을 찾아 체크박스 활성화")
+                msg_box.setIcon(QMessageBox.Icon.Warning)
+                msg_box.setStandardButtons(QMessageBox.StandardButton.Ok)
+                msg_box.exec()
         
         if self._recording_listener_thread and self._recording_listener_thread.isRunning():
             try:
