@@ -256,36 +256,99 @@ class ClipboardManagerApp(QObject):
     def quit_application(self):
         print("SLOT: quit_application called")
         try:
+            # 트레이 아이콘 정리
             if hasattr(self, 'tray_icon') and self.tray_icon:
-                self.tray_icon.stop()
-            if hasattr(self, 'tray_thread') and self.tray_thread.is_alive():
-                self.tray_thread.join(timeout=0.5)
-
-            if self.hotkey_listener_thread and self.hotkey_listener_thread.isRunning():
-                self.hotkey_listener_thread.stop()
-                self.hotkey_listener_thread.wait(500)
-
-            if self.clipboard_monitor_thread and self.clipboard_monitor_thread.isRunning():
-                self.clipboard_monitor_thread.stop()
-                self.clipboard_monitor_thread.wait(500)
+                try:
+                    self.tray_icon.stop()
+                except Exception as e:
+                    print(f"트레이 아이콘 종료 중 오류: {e}")
             
-            if self.settings_dialog and hasattr(self.settings_dialog, '_recording_listener_thread'):
-                rec_thread = self.settings_dialog._recording_listener_thread
-                if rec_thread and rec_thread.isRunning():
-                    rec_thread.stop_listener_and_quit() # HotkeyRecordingThread에 해당 메서드 필요
-                    rec_thread.wait(200)
+            # 트레이 스레드 정리
+            if hasattr(self, 'tray_thread') and self.tray_thread and self.tray_thread.is_alive():
+                try:
+                    self.tray_thread.join(timeout=0.5)
+                except Exception as e:
+                    print(f"트레이 스레드 정리 중 오류: {e}")
 
+            # 핫키 리스너 스레드 정리
+            if self.hotkey_listener_thread and self.hotkey_listener_thread.isRunning():
+                try:
+                    self.hotkey_listener_thread.stop()
+                    success = self.hotkey_listener_thread.wait(500)
+                    if not success:
+                        print("핫키 리스너 스레드 종료 타임아웃, 강제 종료 시도")
+                        self.hotkey_listener_thread.terminate()
+                except Exception as e:
+                    print(f"핫키 리스너 스레드 종료 중 오류: {e}")
+
+            # 클립보드 모니터 스레드 정리
+            if self.clipboard_monitor_thread and self.clipboard_monitor_thread.isRunning():
+                try:
+                    self.clipboard_monitor_thread.stop()
+                    success = self.clipboard_monitor_thread.wait(500)
+                    if not success:
+                        print("클립보드 모니터 스레드 종료 타임아웃, 강제 종료 시도")
+                        self.clipboard_monitor_thread.terminate()
+                except Exception as e:
+                    print(f"클립보드 모니터 스레드 종료 중 오류: {e}")
+            
+            # 설정 다이얼로그의 단축키 기록 스레드 정리
+            if self.settings_dialog:
+                try:
+                    if hasattr(self.settings_dialog, '_recording_listener_thread'):
+                        rec_thread = self.settings_dialog._recording_listener_thread
+                        if rec_thread and rec_thread.isRunning():
+                            try:
+                                rec_thread.stop_listener_and_quit()
+                                success = rec_thread.wait(500)
+                                if not success:
+                                    print("단축키 기록 스레드 종료 타임아웃, 강제 종료 시도")
+                                    rec_thread.terminate()
+                            except Exception as e:
+                                print(f"단축키 기록 스레드 종료 중 오류: {e}")
+                except Exception as e:
+                    print(f"설정 다이얼로그 정리 중 오류: {e}")
+
+            # 애플리케이션 종료
+            print("모든 스레드 정리 완료, 애플리케이션 종료")
             if self.app:
                 self.app.quit()
         except Exception as e:
-            print(f"Error during quit_application: {e}")
+            print(f"애플리케이션 종료 중 오류: {e}")
             traceback.print_exc()
+            # 심각한 오류 발생 시 강제 종료
+            try:
+                if self.app:
+                    self.app.exit(1)
+                else:
+                    sys.exit(1)
+            except Exception:
+                os._exit(1)  # 최후의 수단으로 강제 종료
 
     def quit_application_threadsafe(self):
         self._request_quit_signal.emit()
 
 if __name__ == "__main__":
     print("Application starting...")
+    
+    # Mac 환경 접근성 권한 안내
+    if sys.platform == "darwin":
+        print("""
+=================================================
+중요한 안내: macOS 접근성 권한 설정 필요
+=================================================
+이 앱이 키보드 입력을 감지하려면 macOS의 접근성 권한이 필요합니다.
+
+설정 방법:
+1. 시스템 환경설정 > 개인 정보 보호 및 보안 > 손쉬운 사용
+2. 목록에서 이 앱을 찾아 체크박스 활성화
+3. 변경사항 적용을 위해 필요시 앱 재시작
+
+권한이 없으면 단축키 기능이 정상 작동하지 않을 수 있습니다.
+=================================================
+        """)
+    
+    # Windows DPI 설정
     if sys.platform == "win32":
         try:
             from ctypes import windll
@@ -299,7 +362,23 @@ if __name__ == "__main__":
                 except Exception: pass 
         except Exception: pass 
 
-    manager_app = ClipboardManagerApp()
-    exit_code = manager_app.run()
-    print(f"Application finished with exit code: {exit_code}")
-    sys.exit(exit_code)
+    # 애플리케이션 시작 및 예외 처리
+    try:
+        manager_app = ClipboardManagerApp()
+        exit_code = manager_app.run()
+        print(f"Application finished with exit code: {exit_code}")
+        sys.exit(exit_code)
+    except Exception as e:
+        print(f"애플리케이션 실행 중 오류 발생: {e}")
+        traceback.print_exc()
+        
+        # Mac에서 접근성 권한 관련 오류 확인
+        error_msg = str(e).lower()
+        if sys.platform == "darwin" and ("accessibility" in error_msg or "permission" in error_msg or "authorization" in error_msg):
+            print("""
+=================================================
+접근성 권한 문제로 앱이 종료되었습니다.
+시스템 환경설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 이 앱을 활성화하세요.
+=================================================
+            """)
+        sys.exit(1)

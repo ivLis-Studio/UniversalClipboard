@@ -1381,14 +1381,23 @@ class SettingsDialog(QDialog):
         self.temp_hotkey_config = None
         
         if self._recording_listener_thread and self._recording_listener_thread.isRunning():
-            self._recording_listener_thread.stop_listener_and_quit()
-            self._recording_listener_thread.wait()
+            try:
+                self._recording_listener_thread.stop_listener_and_quit()
+                self._recording_listener_thread.wait(1000)  # 1초까지 기다림
+            except Exception as e:
+                print(f"단축키 기록 스레드 정리 중 오류: {e}")
             
         self._recording_listener_thread = HotkeyRecordingThread(self)
         self._recording_listener_thread.key_combination_recorded.connect(self.on_key_combination_recorded)
         self._recording_listener_thread.recording_canceled.connect(self.on_recording_canceled)
         self._recording_listener_thread.update_display_signal.connect(self.update_hotkey_display_from_thread)
-        self._recording_listener_thread.start()
+        
+        try:
+            self._recording_listener_thread.start()
+            print("단축키 기록 스레드가 시작되었습니다.")
+        except Exception as e:
+            print(f"단축키 기록 스레드 시작 중 오류: {e}")
+            self.on_recording_canceled()  # 실패 시 취소 처리
     
     @pyqtSlot(str)
     def update_hotkey_display_from_thread(self, text):
@@ -1398,30 +1407,61 @@ class SettingsDialog(QDialog):
     @pyqtSlot(list, str)
     def on_key_combination_recorded(self, modifiers, main_key):
         """단축키 조합 기록 완료 처리"""
-        self.temp_hotkey_config = {"modifiers": modifiers, "key": main_key}
-        display_text = format_hotkey_for_display(self.temp_hotkey_config)
-        self.status_label.setText(f"기록된 단축키: {display_text}")
-        self.record_button.setEnabled(True)
-        self.save_button.setEnabled(True)
-        
-        if self._recording_listener_thread:
-            self._recording_listener_thread.quit()
-            self._recording_listener_thread.wait()
-            self._recording_listener_thread = None
+        try:
+            # Mac 환경에서 cmd_l 수정자를 cmd로 표준화
+            if sys.platform == "darwin":
+                normalized_modifiers = []
+                for mod in modifiers:
+                    if mod == "cmd_l":
+                        normalized_modifiers.append("cmd")
+                    else:
+                        normalized_modifiers.append(mod)
+                modifiers = normalized_modifiers
+                
+            self.temp_hotkey_config = {"modifiers": modifiers, "key": main_key}
+            display_text = format_hotkey_for_display(self.temp_hotkey_config)
+            self.status_label.setText(f"기록된 단축키: {display_text}")
+            
+            # 저장 기능 활성화
+            self.record_button.setEnabled(True)
+            self.save_button.setEnabled(True)
+            
+            if self._recording_listener_thread:
+                self._recording_listener_thread.quit()
+                self._recording_listener_thread.wait(1000)  # 최대 1초 대기
+                self._recording_listener_thread = None
+        except Exception as e:
+            print(f"단축키 조합 기록 완료 처리 중 오류: {e}")
+            self.on_recording_canceled()  # 문제 발생 시 취소 처리
     
     @pyqtSlot()
     def on_recording_canceled(self):
         """단축키 기록 취소 처리"""
-        self.status_label.setText("단축키 기록이 취소되었습니다.")
-        self.hotkey_display.setText(format_hotkey_for_display(self.current_hotkey_config))
-        self.record_button.setEnabled(True)
-        self.save_button.setEnabled(True)
-        self.temp_hotkey_config = None
-        
-        if self._recording_listener_thread:
-            self._recording_listener_thread.quit()
-            self._recording_listener_thread.wait()
-            self._recording_listener_thread = None
+        try:
+            # 현재 표시된 메시지 확인
+            current_msg = self.hotkey_display.text()
+            if current_msg == "접근성 권한 필요" and sys.platform == "darwin":
+                self.status_label.setText("Mac OS 접근성 권한이 필요합니다. 시스템 환경설정 > 개인 정보 보호 및 보안 > 손쉬운 사용에서 이 앱을 활성화하세요.")
+            elif current_msg == "키보드 감지 오류":
+                self.status_label.setText("키보드 이벤트 감지 중 오류가 발생했습니다. 다시 시도해 주세요.")
+            else:
+                self.status_label.setText("단축키 기록이 취소되었습니다.")
+                
+            # 기본 값으로 복원
+            self.hotkey_display.setText(format_hotkey_for_display(self.current_hotkey_config))
+            self.record_button.setEnabled(True)
+            self.save_button.setEnabled(True)
+            self.temp_hotkey_config = None
+            
+            if self._recording_listener_thread:
+                self._recording_listener_thread.quit()
+                self._recording_listener_thread.wait(1000)  # 최대 1초 대기
+                self._recording_listener_thread = None
+        except Exception as e:
+            print(f"단축키 기록 취소 중 오류: {e}")
+            self.record_button.setEnabled(True)
+            self.save_button.setEnabled(True)
+            self.temp_hotkey_config = None
     
     def save_settings(self):
         """설정 저장"""

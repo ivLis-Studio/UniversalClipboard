@@ -38,8 +38,12 @@ class HotkeyListenerThread(QThread):
         target_modifiers = set()
         for mod_name in self.hotkey_config.get("modifiers", []):
             try: 
-                key_attr = getattr(keyboard.Key, mod_name)
-                target_modifiers.add(key_attr)
+                # Mac에서는 특별히 cmd 키를 처리
+                if mod_name == "cmd" and sys.platform == "darwin":
+                    target_modifiers.add(keyboard.Key.cmd)
+                else:
+                    key_attr = getattr(keyboard.Key, mod_name)
+                    target_modifiers.add(key_attr)
             except AttributeError: 
                 print(f"HotkeyListenerThread: 알 수 없는 수정자 키 '{mod_name}'")
                 
@@ -265,10 +269,10 @@ class HotkeyRecordingThread(QThread):
                     elif key in (keyboard.Key.alt_l, keyboard.Key.alt_r): 
                         mod_name = "alt_l"
                     elif sys.platform == "darwin" and key in (keyboard.Key.cmd_l, keyboard.Key.cmd_r): 
-                        mod_name = "cmd_l"
+                        mod_name = "cmd"  # 여기를 cmd_l에서 cmd로 수정
                     else:  # 다른 특수 키(Key.space, Key.enter, Key.f1 등)는 주 키가 됨
                         key_val = key.name 
-                elif isinstance(key, keyboard.KeyCode) and key.char:  # 문자 키
+                elif isinstance(key, keyboard.KeyCode) and hasattr(key, 'char') and key.char:  # 문자 키
                     # \x01~\x1A 같은 제어 문자 필터링
                     # 수정자 키가 눌리지 않은 경우 pynput은 보통 정확한 문자를 제공함
                     if ('\x00' < key.char < '\x20') and key.char not in ['\t', '\n', '\r']:
@@ -299,21 +303,59 @@ class HotkeyRecordingThread(QThread):
                     self.key_combination_recorded.emit(list(self.recorded_modifiers), self.recorded_key)
                     return False  # 리스너 중지
                 return True
-            except Exception:
-                if self._listener: 
-                    self._listener.stop()
-                self.recording_canceled.emit()
-                return False
+            except Exception as e:
+                print(f"HotkeyRecordingThread: 키 처리 중 예외 발생: {e}")
+                # 예외가 발생해도 계속 진행, 중요 작업인 경우만 종료 시그널 발생
+                if self._listener and not self.recorded_key:
+                    try: 
+                        self._listener.stop()
+                    except Exception as e2:
+                        print(f"HotkeyRecordingThread: 리스너 중지 시도 중 추가 예외: {e2}")
+                    self.recording_canceled.emit()
+                    return False
+                return True
                 
         try:
-            self._listener = keyboard.Listener(on_press=on_press)
-            self._listener.start()
-            self._listener.join()
-        except Exception: 
+            # Mac 환경에서는 접근성 권한 문제로 예외 발생 가능성이 있음
+            if sys.platform == "darwin":
+                print("Mac 환경에서 키보드 리스너 생성 시도...")
+                try:
+                    self._listener = keyboard.Listener(on_press=on_press, suppress=False)
+                    self._listener.start()
+                    
+                    # 리스너가 실제로 시작되었는지 확인 (약간의 지연 후)
+                    time.sleep(0.2)
+                    if not self._listener.is_alive():
+                        raise Exception("키보드 리스너가 시작되지 않았습니다. 접근성 권한을 확인하세요.")
+                    
+                    print("Mac에서 키보드 리스너 시작 성공!")
+                    self.update_display_signal.emit("새 단축키 입력 대기 중...")
+                    self._listener.join()
+                except Exception as mac_error:
+                    error_msg = str(mac_error)
+                    if "accessibility" in error_msg.lower() or "is not trusted" in error_msg.lower() or not error_msg:
+                        print("접근성 권한 오류: 시스템 환경설정 > 개인 정보 보호 및 보안 > 개인 정보 보호 > 손쉬운 사용에서 이 앱을 활성화해야 합니다.")
+                        self.update_display_signal.emit("접근성 권한 필요")
+                    else:
+                        print(f"Mac 환경 키보드 리스너 오류: {mac_error}")
+                        self.update_display_signal.emit("키보드 감지 오류")
+                    
+                    # 오류 발생 후 취소 처리
+                    self.recording_canceled.emit()
+            else:
+                # 다른 플랫폼 (Windows, Linux 등)
+                self._listener = keyboard.Listener(on_press=on_press)
+                self._listener.start()
+                self._listener.join()
+        except Exception as e: 
+            print(f"HotkeyRecordingThread: 리스너 생성/시작 오류: {e}")
             self.recording_canceled.emit()
         finally:
             if self._listener and self._listener.is_alive(): 
-                self._listener.stop()
+                try:
+                    self._listener.stop()
+                except Exception as e:
+                    print(f"HotkeyRecordingThread: 리스너 정리 중 오류: {e}")
             self._listener = None
 
     def stop_listener_and_quit(self):
@@ -321,5 +363,8 @@ class HotkeyRecordingThread(QThread):
         리스너 중지 및 스레드 종료 함수
         """
         if self._listener: 
-            self._listener.stop()
+            try:
+                self._listener.stop()
+            except Exception as e:
+                print(f"HotkeyRecordingThread: stop_listener_and_quit 중 예외: {e}")
         self.quit() 
