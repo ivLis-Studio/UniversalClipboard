@@ -86,7 +86,23 @@ class ClipboardMonitorThread(QThread):
             현재 클립보드 히스토리 리스트
         """
         with ClipboardMonitorThread._lock:
-            return list(ClipboardMonitorThread.clipboard_history)
+            history = list(ClipboardMonitorThread.clipboard_history)
+            print(f"클립보드 히스토리 가져오기: {len(history)}개 항목")
+            
+            # 설정 파일에서 히스토리 재로드(히스토리가 비어있을 경우)
+            if not history:
+                try:
+                    config_data = load_config()
+                    if "history" in config_data and config_data["history"]:
+                        print("설정 파일에서 히스토리 복원 시도")
+                        history = list(config_data["history"])
+                        # 히스토리 복원
+                        ClipboardMonitorThread.clipboard_history = history
+                        print(f"설정 파일에서 {len(history)}개 항목 복원됨")
+                except Exception as e:
+                    print(f"히스토리 복원 중 오류: {e}")
+            
+            return history
 
     @staticmethod
     def add_item_manually(item_text, set_clipboard=True):
