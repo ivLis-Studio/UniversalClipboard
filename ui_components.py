@@ -108,27 +108,27 @@ class ClipboardHistoryPopup(QWidget):
         # 헤더 영역
         self.header = QFrame()
         self.header.setObjectName("header")
-        self.header.setFixedHeight(60)
+        self.header.setFixedHeight(50)  # 약간 낮은 헤더 높이
         header_layout = QHBoxLayout(self.header)
         header_layout.setContentsMargins(20, 0, 20, 0)
         
         # 앱 로고 및 제목
         logo_layout = QHBoxLayout()
         app_icon = QLabel()
-        icon_pixmap = QPixmap(24, 24)
+        icon_pixmap = QPixmap(20, 20)  # 아이콘 크기 약간 축소
         icon_pixmap.fill(Qt.GlobalColor.transparent)
         
         # 앱 아이콘 그리기
         painter = QPainter(icon_pixmap)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
-        gradient = QLinearGradient(0, 0, 24, 24)
+        gradient = QLinearGradient(0, 0, 20, 20)
         gradient.setColorAt(0, QColor(COLOR_PRIMARY))
         gradient.setColorAt(1, QColor(COLOR_ACCENT))
         painter.setBrush(QBrush(gradient))
-        painter.drawRoundedRect(2, 2, 20, 20, 5, 5)
+        painter.drawRoundedRect(2, 2, 16, 16, 4, 4)
         painter.setPen(QColor("white"))
-        painter.drawText(QRect(2, 2, 20, 20), Qt.AlignmentFlag.AlignCenter, "U")
+        painter.drawText(QRect(2, 2, 16, 16), Qt.AlignmentFlag.AlignCenter, "U")
         painter.end()
         
         app_icon.setPixmap(icon_pixmap)
@@ -183,7 +183,7 @@ class ClipboardHistoryPopup(QWidget):
         self.content_area = QFrame()
         self.content_area.setObjectName("contentArea")
         content_layout = QVBoxLayout(self.content_area)
-        content_layout.setContentsMargins(15, 15, 15, 15)
+        content_layout.setContentsMargins(15, 10, 15, 10)  # 상하 여백 줄임
         
         # 클립보드 아이템 목록 영역
         self.items_list = QListWidget()
@@ -221,37 +221,31 @@ class ClipboardHistoryPopup(QWidget):
         # 푸터 영역
         self.footer = QFrame()
         self.footer.setObjectName("footer")
-        self.footer.setFixedHeight(40)
+        self.footer.setFixedHeight(30)  # 푸터 높이 줄임
         footer_layout = QHBoxLayout(self.footer)
         footer_layout.setContentsMargins(20, 0, 20, 0)
         
-        # 상태 메시지
-        self.status_label = QLabel("단축키: " + format_hotkey_for_display({"modifiers": ["ctrl_l", "shift_l"], "key": "v"}))
+        # 단축키 표시
+        self.status_label = QLabel("단축키: " + format_hotkey_for_display({"modifiers": ["shift"], "key": "+"}))
         self.status_label.setObjectName("statusLabel")
         
         # 설정 버튼
         self.settings_button = QPushButton("설정")
         self.settings_button.setObjectName("settingsButton")
-        self.settings_button.setProperty("accent", True)
+        self.settings_button.setFixedWidth(60)
         self.settings_button.clicked.connect(self.open_settings)
         
-        # 푸터에 위젯 추가
         footer_layout.addWidget(self.status_label)
         footer_layout.addStretch()
         footer_layout.addWidget(self.settings_button)
         
-        # 콘테이너에 섹션들 추가
+        # 레이아웃에 구성 요소 추가
         container_layout.addWidget(self.header)
-        container_layout.addWidget(self.content_area, 1)  # 1은 stretch factor
+        container_layout.addWidget(self.content_area, 1)  # 1은 stretch factor로 늘어나게 함
         container_layout.addWidget(self.footer)
-        
-        # 메인 레이아웃에 콘테이너 추가
         main_layout.addWidget(self.container)
         
-        # 크기 설정
-        self.setMinimumSize(800, 500)
-        
-        # 테마 적용
+        # 스타일 적용
         self.apply_theme()
     
     def _open_url(self, url):
@@ -264,119 +258,65 @@ class ClipboardHistoryPopup(QWidget):
             print(f"Error opening URL {url}: {e}")
 
     def apply_theme(self):
-        """현재 테마 모드에 따라 스타일시트 적용"""
-        # 기본 색상 설정
+        """현재 테마(다크/라이트 모드)에 맞는 스타일 적용"""
+        # 테마에 따른 색상 선택
         if self.dark_mode:
             bg_color = COLOR_BG_DARK
             text_color = COLOR_TEXT_DARK
-            border_color = "#444"
-            container_bg = "#1E1E1E"
-            header_bg = "#252525"
-            footer_bg = "#252525"
-            item_bg = "#2D2D2D"
-            item_hover_bg = "#323232"
-            search_bg = "#333"
-            search_border = "#555"
+            item_bg_color = "rgba(40, 40, 40, 255)" 
+            item_hover_color = "rgba(60, 60, 60, 255)"
+            header_bg_color = "rgba(30, 30, 30, 255)"
+            border_color = "rgba(45, 45, 45, 255)"
         else:
             bg_color = COLOR_BG_LIGHT
             text_color = COLOR_TEXT_LIGHT
-            border_color = "#E0E0E0"
-            container_bg = "white"
-            header_bg = "#FAFAFA"
-            footer_bg = "#FAFAFA"
-            item_bg = "white"
-            item_hover_bg = "#F5F5F5"
-            search_bg = "white"
-            search_border = "#DDD"
+            item_bg_color = "rgba(240, 240, 240, 255)" 
+            item_hover_color = "rgba(230, 230, 230, 255)"
+            header_bg_color = "rgba(255, 255, 255, 255)"
+            border_color = "rgba(220, 220, 220, 255)"
         
-        # 스타일시트 구성
+        # 전체 앱 스타일
         self.setStyleSheet(f"""
             QWidget {{
                 font-family: {FONT_MAIN};
                 color: {text_color};
-                font-size: 13px;
+                font-size: 10pt;
             }}
             
             #container {{
-                background-color: {container_bg};
-                border-radius: 10px;
-                border: 1px solid {border_color};
+                background-color: {bg_color};
+                border: none;
+                border-radius: 0px;  /* 모서리 둥글기 제거 */
             }}
             
             #header {{
-                background-color: {header_bg};
-                border-top-left-radius: 10px;
-                border-top-right-radius: 10px;
+                background-color: {header_bg_color};
                 border-bottom: 1px solid {border_color};
+                border-top-left-radius: 0px;
+                border-top-right-radius: 0px;
             }}
             
             #footer {{
-                background-color: {footer_bg};
-                border-bottom-left-radius: 10px;
-                border-bottom-right-radius: 10px;
+                background-color: {header_bg_color};
                 border-top: 1px solid {border_color};
+                border-bottom-left-radius: 0px;
+                border-bottom-right-radius: 0px;
             }}
             
             #appTitle {{
-                font-size: 16px;
+                font-size: 14pt;
                 font-weight: bold;
-                color: {text_color};
-                padding-left: 8px;
+                color: {COLOR_PRIMARY};
+                margin-left: 5px;
             }}
             
             #searchBox {{
-                background-color: {search_bg};
-                border: 1px solid {search_border};
-                border-radius: 6px;
-                padding: 8px 12px;
-                color: {text_color};
-                min-height: 18px;
-            }}
-            
-            #searchBox:focus {{
-                border: 1px solid {COLOR_PRIMARY};
-            }}
-            
-            #itemsList {{
-                background-color: transparent;
-                outline: none;
-                border: none;
-            }}
-            
-            QFrame[customItem=true] {{
-                background-color: {item_bg};
+                background-color: {item_bg_color};
                 border: 1px solid {border_color};
-                border-radius: 8px;
-                padding: 0px;
-            }}
-            
-            QFrame[customItem=true]:hover {{
-                background-color: {item_hover_bg};
-                border: 1px solid {COLOR_PRIMARY};
-            }}
-            
-            #emptyMessage {{
-                color: #888;
-                font-size: 15px;
-            }}
-            
-            #statusLabel {{
-                color: #777;
-                font-size: 12px;
-            }}
-            
-            QToolButton#themeToggle {{
-                background-color: transparent;
-                border: none;
-                border-radius: 15px;
-                font-size: 16px;
-                min-width: 30px;
-                min-height: 30px;
-                padding: 4px;
-            }}
-            
-            QToolButton#themeToggle:hover {{
-                background-color: {'rgba(255, 255, 255, 0.1)' if self.dark_mode else 'rgba(0, 0, 0, 0.05)'};
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 10pt;
+                color: {text_color};
             }}
             
             QPushButton[category=true] {{
@@ -384,49 +324,88 @@ class ClipboardHistoryPopup(QWidget):
                 border: none;
                 border-radius: 4px;
                 padding: 6px 10px;
-                color: {'#AAA' if self.dark_mode else '#777'};
+                font-size: 9.5pt;
+                color: {text_color};
             }}
             
-            QPushButton[category=true]:hover {{
-                background-color: {'rgba(255, 255, 255, 0.1)' if self.dark_mode else 'rgba(0, 0, 0, 0.05)'};
-            }}
-            
-            QPushButton[category=true][selected=true] {{
-                color: {COLOR_PRIMARY};
-                font-weight: bold;
-                background-color: {'rgba(0, 120, 215, 0.1)' if self.dark_mode else 'rgba(0, 120, 215, 0.05)'};
-            }}
-            
-            QPushButton[accent=true] {{
+            QPushButton[category=true]:checked {{
                 background-color: {COLOR_PRIMARY};
                 color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 6px 12px;
                 font-weight: bold;
             }}
             
-            QPushButton[accent=true]:hover {{
-                background-color: {'#0063B1' if self.dark_mode else '#0069C0'};
+            QPushButton[category=true]:hover:!checked {{
+                background-color: {item_hover_color};
             }}
             
-            QToolButton#openLinkButton {{
+            #themeToggle {{
                 background-color: transparent;
                 border: none;
-                border-radius: 4px;
-                padding: 4px;
-                font-size: 16px; /* 아이콘 크기 조정 */
+                border-radius: 3px;
+                padding: 2px;
+                font-size: 14pt;
             }}
             
-            QToolButton#openLinkButton:hover {{
-                background-color: {'rgba(255, 255, 255, 0.1)' if self.dark_mode else 'rgba(0, 0, 0, 0.05)'};
+            #themeToggle:hover {{
+                background-color: {item_hover_color};
+            }}
+            
+            #contentArea {{
+                background-color: {bg_color};
+            }}
+            
+            #emptyMessage {{
+                color: rgba(128, 128, 128, 180);
+                font-size: 12pt;
+                padding: 20px;
+            }}
+            
+            #statusLabel {{
+                color: rgba(128, 128, 128, 200);
+                font-size: 9pt;
+            }}
+            
+            #settingsButton {{
+                background-color: transparent;
+                border: 1px solid {border_color};
+                border-radius: 3px;
+                padding: 4px 8px;
+                font-size: 9pt;
+                color: {text_color};
+            }}
+            
+            #settingsButton:hover {{
+                background-color: {item_hover_color};
+            }}
+            
+            /* 스크롤바 스타일 */
+            QScrollBar:vertical {{
+                border: none;
+                background: {bg_color};
+                width: 8px;
+                margin: 0px;
+            }}
+            
+            QScrollBar::handle:vertical {{
+                background: rgba(128, 128, 128, 120);
+                min-height: 20px;
+                border-radius: 4px;
+            }}
+            
+            QScrollBar::handle:vertical:hover {{
+                background: rgba(128, 128, 128, 180);
+            }}
+            
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+            
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                background: none;
             }}
         """)
         
-        # 프로퍼티 업데이트
-        for btn in self.category_buttons:
-            btn.style().unpolish(btn)
-            btn.style().polish(btn)
+        # 아이템 위젯은 ItemDelegate를 사용하므로 별도 스타일링 불필요
 
     def toggle_theme(self):
         """다크 모드와 라이트 모드 간 전환"""
@@ -551,124 +530,129 @@ class ClipboardHistoryPopup(QWidget):
         return processed_text
     
     def create_item_widget(self, item_text, index):
-        """클립보드 항목 위젯 생성"""
-        list_item = QListWidgetItem(self.items_list)
-        
-        # 아이템 위젯 생성
+        """클립보드 항목을 표시할 위젯 생성 - 새로운 가로형 디자인"""
+        # 전체 아이템 컨테이너
         item_widget = QFrame()
-        item_widget.setProperty("customItem", True) 
-        
-        # 아이템 전체 가로 레이아웃 (아이콘 - 텍스트 영역 - [링크 버튼])
+        item_widget.setProperty("customItem", True)
         item_layout = QHBoxLayout(item_widget)
-        item_layout.setContentsMargins(10, 8, 10, 8) # 아이템 내부 전체 여백 (상하좌우)
-        item_layout.setSpacing(12) # 아이콘, 텍스트 영역, 링크 버튼 사이의 주 간격
+        item_layout.setContentsMargins(10, 8, 10, 8)
+        item_layout.setSpacing(10)
         
-        # 1. 아이콘
+        # 아이콘 영역
         icon_label = QLabel()
-        icon_label.setFixedSize(32, 32) # 아이콘 크기 고정
-        icon_label.setPixmap(self.get_item_icon(item_text))
-        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # icon_label.setStyleSheet("border: 1px solid red;") # 디버깅용
-        item_layout.addWidget(icon_label)
+        icon_label.setFixedSize(24, 24)
+        icon_pixmap = self.get_item_icon(item_text)
+        icon_label.setPixmap(icon_pixmap)
         
-        # 2. 텍스트 영역 (시간 + 내용)
-        text_area_widget = QWidget() # 텍스트 영역을 위한 별도 위젯 (스트레칭 제어 용이)
-        text_layout = QVBoxLayout(text_area_widget) 
-        text_layout.setContentsMargins(0, 0, 0, 0) # 텍스트 레이아웃 자체의 여백은 0
-        text_layout.setSpacing(4)  # 시간과 내용 사이의 수직 간격
-
-        # 시간 표시
+        # 내용 영역 (메인)
+        content_area = QWidget()
+        content_layout = QHBoxLayout(content_area)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(5)
+        
+        # 텍스트 레이블
+        text_label = QLabel(self.truncate_text(item_text, CLIP_PREVIEW_MAX_LEN))
+        text_label.setWordWrap(False)
+        text_label.setTextFormat(Qt.TextFormat.PlainText)
+        
+        # 시간 표시 레이블
         time_label = QLabel(self.get_time_display(item_text))
-        time_label.setStyleSheet(f"color: {{'#888' if not self.dark_mode else '#AAA'}}; font-size: 11px;")
-        # time_label.setStyleSheet("border: 1px solid blue;") # 디버깅용
-        text_layout.addWidget(time_label)
+        time_label.setObjectName("timeLabel")
+        time_label.setStyleSheet("color: rgba(128, 128, 128, 180); font-size: 9pt;")
+        time_label.setFixedWidth(70) # 시간 레이블 고정 폭
         
-        # 내용 미리보기
-        content_label = QLabel(self.truncate_text(item_text, CLIP_PREVIEW_MAX_LEN))
-        content_label.setWordWrap(True)
-        content_label.setTextFormat(Qt.TextFormat.PlainText) # HTML 대신 일반 텍스트로 처리
-        # content_label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse) # 선택 가능하게 하려면
-        
-        # 여러 줄 표시를 위한 높이 제한 설정
-        font_metrics = QFontMetrics(content_label.font())
-        line_height = font_metrics.height()
-        max_preview_lines = 2  # 최대 2줄까지 표시
-        content_label.setMinimumHeight(line_height) # 최소 1줄 높이
-        content_label.setMaximumHeight(line_height * max_preview_lines + (font_metrics.leading() * (max_preview_lines -1)) + 4) # 줄간격(leading) 고려, 추가 여유
-        # content_label.setToolTip(item_text) # 툴크은 이미 설정됨
-        content_label.setStyleSheet(f"font-size: 13px; color: {{'#333' if not self.dark_mode else '#DDD'}};")
-        # content_label.setStyleSheet("border: 1px solid green;") # 디버깅용
-        text_layout.addWidget(content_label)
-        
-        item_layout.addWidget(text_area_widget, 1) # 텍스트 영역이 남은 공간을 차지하도록 (stretch factor 1)
-
-        # 3. URL인 경우 링크 열기 버튼 추가
-        url_pattern = re.compile(
-            r'^(?:http|ftp)s?://'  
-            r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|' 
-            r'localhost|'  
-            r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})' 
-            r'(?::\d+)?'  
-            r'(?:/?|[/?]\S+)$', re.IGNORECASE)
-        
-        if re.match(url_pattern, item_text):
+        # URL인 경우 링크 버튼 추가
+        url_match = re.search(r'https?://\S+', item_text)
+        open_link_button = None
+        if url_match:
             open_link_button = QToolButton()
             open_link_button.setObjectName("openLinkButton")
-            open_link_button.setText("🔗") 
-            open_link_button.setToolTip("브라우저에서 링크 열기")
-            open_link_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
-            open_link_button.setFixedSize(28, 28) # 버튼 크기 살짝 조정
-            open_link_button.setStyleSheet("padding: 0px;") # 버튼 내부 아이콘/텍스트 여백 최소화
-            # open_link_button.setStyleSheet("border: 1px solid yellow;") # 디버깅용
-            open_link_button.clicked.connect(lambda checked, url=item_text: self._open_url(url))
-            item_layout.addWidget(open_link_button, 0, Qt.AlignmentFlag.AlignVCenter) # 수직 중앙 정렬, stretch factor 0
-        else:
-            # 링크 버튼이 없을 경우, 동일한 공간만큼 빈 스페이서를 넣어 높이 일관성 유지 (선택적)
-            # 빈 QFrame이나 QSpacerItem를 사용할 수 있으나, 버튼 유무에 따라 디자인이 달라지는 것도 자연스러움
-            # item_layout.addSpacing(28) # 또는 고정 크기 위젯
-            pass 
-
-        # QListWidgetItem에 위젯 설정
-        item_widget.adjustSize() # 내부 컨텐츠에 맞게 크기 조절 시도
-        list_item.setSizeHint(QSize(item_widget.sizeHint().width(), item_widget.sizeHint().height() + 2)) # 약간의 추가 여유
-        self.items_list.setItemWidget(list_item, item_widget)
+            open_link_button.setText("🔗")
+            open_link_button.setToolTip("링크 열기")
+            open_link_button.setFixedSize(24, 24)
+            open_link_button.clicked.connect(lambda: self._open_url(url_match.group(0)))
         
-        # 아이템에 원본 텍스트 저장
-        list_item.setData(Qt.ItemDataRole.UserRole, item_text)
+        # 내용 영역에 추가
+        content_layout.addWidget(text_label, 1)  # stretch factor 1
         
-        return list_item
+        # 아이템 레이아웃에 추가
+        item_layout.addWidget(icon_label)
+        item_layout.addWidget(content_area, 1)  # stretch factor 1
+        item_layout.addWidget(time_label)
+        if open_link_button:
+            item_layout.addWidget(open_link_button)
+        
+        # 배경 스타일 설정
+        bg_color = "#2D2D2D" if self.dark_mode else "white"
+        hover_color = "#323232" if self.dark_mode else "#F5F5F5"
+        border_color = "#444" if self.dark_mode else "#E0E0E0"
+        
+        item_widget.setStyleSheet(f"""
+            QFrame[customItem=true] {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 6px;
+            }}
+            
+            QFrame[customItem=true]:hover {{
+                background-color: {hover_color};
+                border: 1px solid {COLOR_PRIMARY};
+            }}
+            
+            QToolButton#openLinkButton {{
+                background-color: transparent;
+                border: none;
+                border-radius: 4px;
+                font-size: 12pt;
+            }}
+            
+            QToolButton#openLinkButton:hover {{
+                background-color: {'rgba(255, 255, 255, 0.15)' if self.dark_mode else 'rgba(0, 0, 0, 0.08)'};
+            }}
+        """)
+        
+        return item_widget
     
     def filter_history(self, search_term=""):
-        """클립보드 히스토리 필터링"""
+        """검색어에 따라 클립보드 히스토리 필터링"""
         self.search_text = search_term.lower()
+        
+        # 현재 카테고리에 해당하는 항목 필터링
+        if self.current_category == 0:  # 클립보드 히스토리
+            if not self.current_history_items:
+                print("클립보드 히스토리 항목 없음")
+                self.filtered_items = []
+            else:
+                print(f"필터링: {len(self.current_history_items)}개 항목 중 '{self.search_text}' 검색")
+                self.filtered_items = [item for item in self.current_history_items 
+                                      if self.search_text in item.lower()]
+        
+        # 필터링 결과 업데이트
         self.update_displayed_items()
     
     def update_displayed_items(self):
-        """화면에 표시되는 항목 업데이트"""
-        if self.current_category != 0:  # 현재 클립보드 히스토리만 구현됨
-            return
-            
-        # 필터링된 항목 목록 얻기
-        filtered_items = [item for item in self.current_history_items if self.search_text in item.lower()]
-        self.filtered_items = filtered_items
-        
-        # 목록 초기화
+        """현재 필터링된 아이템을 화면에 표시"""
         self.items_list.clear()
         
-        if not filtered_items:
-            # 비어있으면 메시지 표시
-            self.empty_message.setText("클립보드 항목이 없습니다")
+        if not self.filtered_items:
             self.empty_message.setVisible(True)
-            self.items_list.setVisible(False)
             return
         
-        # 아이템 추가
         self.empty_message.setVisible(False)
-        self.items_list.setVisible(True)
         
-        # 최근 항목이 위에 오도록 역순으로 추가
-        for i, item_text in enumerate(reversed(filtered_items)):
-            self.create_item_widget(item_text, i)
+        for i, item_text in enumerate(self.filtered_items):
+            # 아이템 위젯 생성
+            item_widget = self.create_item_widget(item_text, i)
+            
+            # QListWidgetItem 생성 및 설정
+            list_item = QListWidgetItem(self.items_list)
+            list_item.setSizeHint(item_widget.sizeHint())
+            self.items_list.setItemWidget(list_item, item_widget)
+            list_item.setData(Qt.ItemDataRole.UserRole, item_text)
+        
+        # 첫 번째 아이템 선택
+        if self.items_list.count() > 0:
+            self.items_list.setCurrentRow(0)
     
     def on_item_clicked(self, item):
         """클립보드 항목 클릭 처리"""
@@ -807,22 +791,15 @@ class ClipboardHistoryPopup(QWidget):
     def show_popup_animated(self):
         """애니메이션과 함께 팝업 표시"""
         try:
-            # 붙여넣기 관련 플래그 초기화 (이제 사용 안하지만 혹시 모르니 정리)
-            # self._is_hiding_for_paste = False 
-            # self._pending_paste_text_after_hide = None
-
             animation_active = self.animation.state() == QPropertyAnimation.State.Running
             if self.isVisible() and abs(self.opacity_effect.opacity() - 1.0) < 0.01 and not animation_active:
-                # print("이미 완전히 표시되었습니다.")
                 return 
             if animation_active and self.animation.direction() == QPropertyAnimation.Direction.Forward:
-                # print("이미 표시 애니메이션이 진행 중입니다.")
                 return 
             if animation_active and self.animation.direction() == QPropertyAnimation.Direction.Backward:
                 print("숨김 애니메이션을 표시 애니메이션으로 전환합니다.")
                 self.animation.stop()
                 self.animation.setDirection(QPropertyAnimation.Direction.Forward)
-                # 이전 콜백들 해제 후 표시용 콜백은 필요 없음 (또는 단순 opacity 설정용)
                 try: self.animation.finished.disconnect() 
                 except TypeError: pass
                 self.animation.start()
@@ -833,11 +810,16 @@ class ClipboardHistoryPopup(QWidget):
             
             target_screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
             screen_geometry = target_screen.availableGeometry()
-            window_width = min(int(screen_geometry.width() * 0.7), 900)
-            window_height = min(int(screen_geometry.height() * 0.7), 600)
+            
+            # 화면 하단 전체를 채우는 형태로 설정
+            window_width = screen_geometry.width()
+            window_height = int(screen_geometry.height() * 0.30)  # 화면 높이의 30%
+            
+            # 창 위치를 화면 하단으로 설정
+            x = screen_geometry.x()
+            y = screen_geometry.bottom() - window_height
+            
             self.resize(window_width, window_height)
-            x = screen_geometry.x() + (screen_geometry.width() - window_width) // 2
-            y = screen_geometry.y() + (screen_geometry.height() - window_height) // 2
             self.move(x, y)
             
             self.animation.stop()
@@ -848,7 +830,6 @@ class ClipboardHistoryPopup(QWidget):
             
             try: self.animation.finished.disconnect() 
             except TypeError: pass
-            # 표시 애니메이션 완료 후 특별한 작업 없으므로 콜백 불필요
             
             self.animation.setDirection(QPropertyAnimation.Direction.Forward)
             self.animation.start()
